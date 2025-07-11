@@ -132,7 +132,7 @@ if selected_measures:
 
     # Intensity Chart
     st.subheader("📈 Energy Intensity vs. Target")
-    fig1, ax1 = plt.subplots(figsize=(6,3))
+    fig1, ax1 = plt.subplots(figsize=(2,2))
     ax1.plot(df["Year"], df["Target kWh/m²"], label="Target Intensity")
     ax1.plot(df["Year"], [post_intensity]*len(df), label="Post-Retrofit Intensity")
     ax1.set_xlabel("Year")
