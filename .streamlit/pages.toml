@@ -1,9 +1,0 @@
-[[pages]]
-path = "01_Home.py"
-name = "🏠 Home"
-icon = "house"
-
-[[pages]]
-path = "02_Analysis.py"
-name = "📊 Analysis"
-icon = "bar-chart"
