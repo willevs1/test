@@ -132,7 +132,7 @@ if selected_measures:
 
     # Intensity Chart
     st.subheader("📈 Energy Intensity vs. Target")
-    fig1, ax1 = plt.subplots()
+    fig1, ax1 = plt.subplots(figsize=(6,3))
     ax1.plot(df["Year"], df["Target kWh/m²"], label="Target Intensity")
     ax1.plot(df["Year"], [post_intensity]*len(df), label="Post-Retrofit Intensity")
     ax1.set_xlabel("Year")
@@ -144,7 +144,7 @@ if selected_measures:
 
     # Cash Flow Chart
     st.subheader("💶 Net Cash Flows Over Time")
-    fig2, ax2 = plt.subplots()
+    fig2, ax2 = plt.subplots(figsize=(6,3))
     ax2.bar(df["Year"], df["Net Cash Flow (€)"])
     ax2.set_xlabel("Year")
     ax2.set_ylabel("€")
