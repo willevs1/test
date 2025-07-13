@@ -1,2 +1,101 @@
 import streamlit as st
-st.title("Hello Streamlit!")
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+st.set_page_config(
+    page_title="ESG Analysis",
+    page_icon="📊",
+    layout="wide"
+)
+
+st.title("📊 ESG Retrofit and Stranding Risk Analysis")
+
+st.write("Enter your building and financial parameters below:")
+
+# Inputs in the MAIN BODY (not sidebar)
+floor_area_m2 = st.number_input("Floor Area (m²)", min_value=1, value=5000)
+
+current_intensity = st.number_input(
+    "Current Energy Intensity (kWh/m²/year)",
+    min_value=0.0,
+    value=250.0
+)
+
+target_intensity = st.number_input(
+    "Target Intensity (kWh/m²/year)",
+    min_value=0.0,
+    value=75.0
+)
+
+years = st.slider(
+    "Years to Reach Target",
+    min_value=1,
+    max_value=30,
+    value=10
+)
+
+retrofit_cost_per_kwh = st.number_input(
+    "Retrofit Cost (£/kWh saved)",
+    min_value=0.0,
+    value=1.5
+)
+
+carbon_price = st.number_input(
+    "Carbon Fine (£/kWh over target)",
+    min_value=0.0,
+    value=0.2
+)
+
+asset_value_per_m2 = st.number_input(
+    "Initial Asset Value (£/m²)",
+    min_value=0.0,
+    value=2000.0
+)
+
+devaluation_rate = st.slider(
+    "Annual Devaluation if Non-Compliant (%)",
+    min_value=0.0,
+    max_value=10.0,
+    value=2.0
+)
+
+# Calculations
+annual_reduction = (current_intensity - target_intensity) / years
+kwh_saved_per_m2 = np.linspace(0, current_intensity - target_intensity, years)
+total_kwh_saved = kwh_saved_per_m2 * floor_area_m2
+
+retrofit_costs = total_kwh_saved * retrofit_cost_per_kwh
+remaining_intensity = current_intensity - kwh_saved_per_m2
+fines = np.maximum(remaining_intensity - target_intensity, 0) * floor_area_m2 * carbon_price
+
+asset_values = []
+value = floor_area_m2 * asset_value_per_m2
+for i in range(years):
+    if remaining_intensity[i] > target_intensity:
+        value *= (1 - devaluation_rate / 100)
+    asset_values.append(value)
+
+# Results
+results = pd.DataFrame({
+    "Year": np.arange(1, years + 1),
+    "kWh Saved per m²": kwh_saved_per_m2,
+    "Retrofit Costs (£)": retrofit_costs,
+    "Fines (£)": fines,
+    "Remaining Intensity (kWh/m²)": remaining_intensity,
+    "Asset Value (£)": asset_values
+})
+
+st.subheader("Simulation Results")
+st.dataframe(results)
+
+# Chart
+st.subheader("Energy Intensity Over Time")
+fig, ax = plt.subplots()
+ax.plot(results["Year"], results["Remaining Intensity (kWh/m²)"], label="Remaining Intensity")
+ax.axhline(target_intensity, color="red", linestyle="--", label="Target Intensity")
+ax.set_xlabel("Year")
+ax.set_ylabel("Energy Intensity (kWh/m²)")
+ax.set_title("Energy Intensity Reduction Path")
+ax.legend()
+st.pyplot(fig)
