@@ -16,10 +16,10 @@ st.write("Enter your building and financial parameters below:")
 # Inputs in the MAIN BODY (not sidebar)
 floor_area_m2 = st.number_input("Floor Area (m²)", min_value=1, value=5000)
 
-current_intensity = st.number_input(
-    "Current Energy Intensity (kWh/m²/year)",
+current_energy_consumption = st.number_input(
+    "Current Energy Consumption (kWh/year)",
     min_value=0.0,
-    value=250.0
+    value=1000000.0
 )
 
 target_intensity = st.number_input(
@@ -61,6 +61,7 @@ devaluation_rate = st.slider(
 )
 
 # Calculations
+current_intensity = current_energy_consumption / floor_area_m2
 annual_reduction = (current_intensity - target_intensity) / years
 kwh_saved_per_m2 = np.linspace(0, current_intensity - target_intensity, years)
 total_kwh_saved = kwh_saved_per_m2 * floor_area_m2
