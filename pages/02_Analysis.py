@@ -29,7 +29,7 @@ target_intensity = st.number_input(
     value=75.0
 )
 
-years = st.slider(
+years = st.number_input(
     "Years to Reach Target",
     min_value=1,
     max_value=30,
