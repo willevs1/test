@@ -5,13 +5,16 @@ import matplotlib.pyplot as plt
 
 st.title("💰 Retrofit Cash Flow Analysis")
 
-# Retrieve stored data
-retrofits = st.session_state["selected_retrofit_data"]
-years = st.session_state["years"]
-floor_area_m2 = st.session_state["floor_area_m2"]
-remaining_intensity = st.session_state["remaining_intensity_after_retrofits"]
+# Check for saved retrofit plan
+if "retrofit_plan" not in st.session_state:
+    st.warning("No retrofit plan found. Please go to the Retrofit Selection page first.")
+    st.stop()
 
-# Energy cost assumption
+retrofits = st.session_state["retrofit_plan"]
+floor_area_m2 = st.session_state["floor_area_m2"]
+current_intensity = st.session_state["current_intensity"]
+years = st.session_state["years"]
+
 energy_cost_per_kwh = st.number_input(
     "Energy Cost per kWh (£)",
     min_value=0.0,
@@ -20,50 +23,44 @@ energy_cost_per_kwh = st.number_input(
 
 # Initialize arrays
 annual_capex = np.zeros(years)
-annual_savings_kwh = np.zeros(years)
-annual_savings_pounds = np.zeros(years)
-
-# Build CAPEX and energy savings
 cumulative_saving_per_m2 = np.zeros(years)
 
-for retrofit, data in retrofits.items():
+# Loop through retrofits
+for measure, data in retrofits.items():
     year_index = data["year"] - 1
-    saving_per_m2 = data["saving"]
-    cost_per_m2 = data["cost_per_m2"]
-    total_cost = cost_per_m2 * floor_area_m2
+    saving_per_m2 = current_intensity * (data["saving_percent"] / 100)
+    cost = data["cost_per_m2"] * floor_area_m2
 
-    # CAPEX occurs in the completion year
-    annual_capex[year_index] += total_cost
+    # CAPEX in implementation year
+    annual_capex[year_index] += cost
 
-    # From year of completion onward, savings accumulate
+    # Savings from that year onwards
     cumulative_saving_per_m2[year_index:] += saving_per_m2
 
-# Compute annual kWh and £ savings
+# Calculate energy and monetary savings
 annual_savings_kwh = cumulative_saving_per_m2 * floor_area_m2
 annual_savings_pounds = annual_savings_kwh * energy_cost_per_kwh
 
-# Cash flow DataFrame
+# Create dataframe
 cashflow = pd.DataFrame({
     "Year": np.arange(1, years + 1),
-    "CAPEX (GBP)": annual_capex,
+    "CAPEX": annual_capex,
     "Annual kWh Saved": annual_savings_kwh,
-    "Annual Savings (GBP)": annual_savings_pounds,
-    "Remaining Intensity (kWh/m²)": remaining_intensity
+    "Annual Savings (£)": annual_savings_pounds,
 })
 
-# Cumulative cashflow
-cashflow["Cumulative Savings (GBP)"] = cashflow["Annual Savings (GBP)"].cumsum()
-cashflow["Net Cashflow (GBP)"] = cashflow["Annual Savings (GBP)"] - cashflow["CAPEX (GBP)"]
-cashflow["Cumulative Net Cashflow (GBP)"] = cashflow["Net Cashflow (GBP)"].cumsum()
+cashflow["Cumulative Savings (£)"] = cashflow["Annual Savings (£)"].cumsum()
+cashflow["Net Cashflow (£)"] = cashflow["Annual Savings (£)"] - cashflow["CAPEX"]
+cashflow["Cumulative Net Cashflow (£)"] = cashflow["Net Cashflow (£)"].cumsum()
 
-# Display results
+# Display table
 st.subheader("📈 Cash Flow Table")
 st.dataframe(cashflow)
 
-# Plot cumulative net cashflow
+# Plot
 st.subheader("📊 Cumulative Net Cashflow Over Time")
 fig, ax = plt.subplots()
-ax.plot(cashflow["Year"], cashflow["Cumulative Net Cashflow (GBP)"], marker="o")
+ax.plot(cashflow["Year"], cashflow["Cumulative Net Cashflow (£)"], marker="o")
 ax.set_xlabel("Year")
 ax.set_ylabel("£")
 ax.set_title("Cumulative Net Cashflow")
