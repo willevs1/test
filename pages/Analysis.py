@@ -77,6 +77,7 @@ remaining_intensity = current_intensity - kwh_saved_per_m2
 results = pd.DataFrame({
     "Year": np.arange(1, years + 1),
     "kWh Saved per m²": kwh_saved_per_m2,
+    "Remaining Intensity (kWh/m²)": remaining_intensity
 })
 
 st.subheader("Simulation Results")
