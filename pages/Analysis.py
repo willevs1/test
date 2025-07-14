@@ -19,7 +19,7 @@ floor_area_m2 = st.number_input("Floor Area (m²)", min_value=1, value=5000)
 current_energy_consumption = st.number_input(
     "Current Energy Consumption (kWh/year)",
     min_value=0.0,
-    value=1000000.0
+    value=100000.0
 )
 
 target_intensity = st.number_input(
