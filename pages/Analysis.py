@@ -14,7 +14,7 @@ st.title("📊 ESG Retrofit and Stranding Risk Analysis")
 st.write("Enter your building and financial parameters below:")
 
 # Inputs in the MAIN BODY (not sidebar)
-floor_area_m2 = st.number_input("Floor Area (m²)", min_value=1, value=5000)
+floor_area_m2 = st.number_input("Floor Area (m²)", min_value=1, value=500)
 
 current_energy_consumption = st.number_input(
     "Current Energy Consumption (kWh/year)",
