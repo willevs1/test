@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import altair as alt
 
 st.set_page_config(
     page_title="ESG Analysis",
@@ -60,15 +61,25 @@ st.subheader("Simulation Results")
 st.dataframe(results)
 
 # Chart
-st.subheader("Energy Intensity Over Time")
-fig, ax = plt.subplots()
-ax.plot(results["Year"], results["Remaining Intensity (kWh/m²)"], label="Remaining Intensity")
-ax.axhline(target_intensity, color="red", linestyle="--", label="Target Intensity")
-ax.set_xlabel("Year")
-ax.set_ylabel("Energy Intensity (kWh/m²)")
-ax.set_title("Energy Intensity Reduction Path")
-ax.legend()
-st.pyplot(fig)
+st.subheader("Energy Intensity Over Time (Interactive)")
+chart = (
+    alt.Chart(results)
+    .mark_line(point=True)
+    .encode(
+        x=alt.X("Year:O", title="Year"),
+        y=alt.Y("Remaining Intensity (kWh/m²)", title="Energy Intensity"),
+        tooltip=[
+            alt.Tooltip("Year:O"),
+            alt.Tooltip("Remaining Intensity (kWh/m²):Q", format=".2f")
+        ]
+    )
+    .properties(
+        width=700,
+        height=400
+    )
+)
+
+st.altair_chart(chart, use_container_width=True)
 
 
 st.session_state.update({
