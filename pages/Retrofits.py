@@ -3,10 +3,19 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-years = int(st.session_state["years"])
-current_intensity  = int(st.session_state["current_intensity"])
+# Retrieve stored variables
+floor_area_m2 = st.session_state["floor_area_m2"]
+current_energy_consumption = st.session_state["current_energy_consumption"]
+target_intensity = st.session_state["target_intensity"]
+years = st.session_state["years"]
+current_intensity = st.session_state["current_intensity"]
+annual_reduction = st.session_state["annual_reduction"]
+kwh_saved_per_m2 = st.session_state["kwh_saved_per_m2"]
+total_kwh_saved = st.session_state["total_kwh_saved"]
+remaining_intensity = st.session_state["remaining_intensity"]
+results = st.session_state["results"]
 
-results  = st.session_state["results"]
+
 
 retrofit_options = {
     "LED Lighting Upgrade": 20,   # kWh/m² saved
