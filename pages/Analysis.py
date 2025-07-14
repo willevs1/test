@@ -69,3 +69,17 @@ ax.set_ylabel("Energy Intensity (kWh/m²)")
 ax.set_title("Energy Intensity Reduction Path")
 ax.legend()
 st.pyplot(fig)
+
+
+st.session_state.update({
+    "floor_area_m2": floor_area_m2,
+    "current_energy_consumption": current_energy_consumption,
+    "target_intensity": target_intensity,
+    "years": years,
+    "current_intensity": current_intensity,
+    "annual_reduction": annual_reduction,
+    "kwh_saved_per_m2": kwh_saved_per_m2,
+    "total_kwh_saved": total_kwh_saved,
+    "remaining_intensity": remaining_intensity,
+    "results": results
+})
