@@ -3,86 +3,89 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-st.title("🏗️ Retrofit Planning")
+st.title("💰 Retrofit Cash Flow Analysis")
 
-# Load previously stored session variables
-floor_area_m2 = st.session_state["floor_area_m2"]
-current_intensity = st.session_state["current_intensity"]
-target_intensity = st.session_state["target_intensity"]
-years = st.session_state["years"]
+# Retrieve stored data from session state
+selected_retrofits = st.session_state.get("selected_retrofit_data", {})
+floor_area_m2 = st.session_state.get("floor_area_m2", 1000)
+years = st.session_state.get("years", 10)
+remaining_intensity = st.session_state.get("remaining_intensity_after_retrofits", np.full(years, np.nan))
 
-# Define retrofit measures and phases
-retrofit_options = {
-    "Optimization": {
-        "Reduce Tenant Loads": {"saving": 23.1, "cost_per_m2": 3},
-        "BMS Upgrade": {"saving": 4.0, "cost_per_m2": 5},
-    },
-    "Light Retrofit": {
-        "Low Energy Lighting": {"saving": 8.5, "cost_per_m2": 15},
-        "Lighting Controls": {"saving": 5.7, "cost_per_m2": 5},
-    },
-    "Deep Retrofit": {
-        "Wall Insulation": {"saving": 4.1, "cost_per_m2": 60},
-        "Roof Insulation": {"saving": 1.5, "cost_per_m2": 20},
-        "Window Replacement": {"saving": 7.4, "cost_per_m2": 60},
-        "Air Source Heat Pump": {"saving": 17.6, "cost_per_m2": 50},
-    },
-    "Renewables": {
-        "Solar PV": {"saving": 5.3, "cost_per_m2": 3},
-    },
-}
+# If no retrofits were selected, show warning
+if not selected_retrofits:
+    st.warning("⚠️ No retrofits selected on the Retrofit page.")
+    st.stop()
 
-# Phase selection
-st.subheader("Select Retrofit Measures and Timing")
+# User input: energy price
+energy_cost_per_kwh = st.number_input(
+    "Energy Cost per kWh (£)",
+    min_value=0.0,
+    value=0.15,
+    step=0.01
+)
 
-selected_retrofits = {}
+# Initialize arrays
+annual_capex = np.zeros(years)
+annual_savings_kwh = np.zeros(years)
+annual_savings_pounds = np.zeros(years)
 
-# Let the user pick measures and years
-for phase, measures in retrofit_options.items():
-    st.markdown(f"**{phase} Measures**")
-    for measure, data in measures.items():
-        col1, col2 = st.columns([3, 2])
-        with col1:
-            selected = st.checkbox(f"{measure} (Save {data['saving']} kWh/m²/yr, Cost £{data['cost_per_m2']}/m²)", key=measure)
-        if selected:
-            with col2:
-                year = st.number_input(
-                    f"Year of completion",
-                    min_value=1,
-                    max_value=years,
-                    value=1,
-                    key=f"{measure}_year"
-                )
-            selected_retrofits[measure] = {
-                "saving": data["saving"],
-                "cost_per_m2": data["cost_per_m2"],
-                "year": year,
-            }
+# Cumulative savings applied over time
+cumulative_saving_per_m2 = np.zeros(years)
 
-# Calculate annual intensity
-remaining_intensity = np.full(years, current_intensity)
-
-# Apply reductions per selected measure
+# Compute cashflows
 for measure, data in selected_retrofits.items():
     year_idx = data["year"] - 1
-    remaining_intensity[year_idx:] -= data["saving"]
+    saving_per_m2 = data["saving"]
+    cost_per_m2 = data["cost_per_m2"]
+    total_cost = cost_per_m2 * floor_area_m2
 
-remaining_intensity = np.clip(remaining_intensity, 0, None)
+    # CAPEX in year of completion
+    annual_capex[year_idx] += total_cost
 
-# Store for cashflow page
-st.session_state["selected_retrofit_data"] = selected_retrofits
-st.session_state["remaining_intensity_after_retrofits"] = remaining_intensity
+    # From year of completion onward, accumulate savings
+    cumulative_saving_per_m2[year_idx:] += saving_per_m2
 
-# Show graph
-st.subheader("📊 Projected Energy Intensity Over Time")
-years_range = np.arange(1, years + 1)
+# Annual savings in kWh and £
+annual_savings_kwh = cumulative_saving_per_m2 * floor_area_m2
+annual_savings_pounds = annual_savings_kwh * energy_cost_per_kwh
 
+# Build DataFrame
+cashflow = pd.DataFrame({
+    "Year": np.arange(1, years + 1),
+    "Capex": annual_capex,
+    "Annual kWh Saved": annual_savings_kwh,
+    "Annual Energy Savings (£)": annual_savings_pounds,
+    "Remaining Intensity (kWh/m²)": remaining_intensity
+})
+
+# Cumulative columns
+cashflow["Cumulative Energy Savings (£)"] = cashflow["Annual Energy Savings (£)"].cumsum()
+cashflow["Net Cashflow (£)"] = cashflow["Annual Energy Savings (£)"] - cashflow["Capex"]
+cashflow["Cumulative Net Cashflow (£)"] = cashflow["Net Cashflow (£)"].cumsum()
+
+# Display Table
+st.subheader("📊 Cash Flow Table")
+st.dataframe(cashflow.style.format({
+    "Capex": "£{:.0f}",
+    "Annual Energy Savings (£)": "£{:.0f}",
+    "Cumulative Energy Savings (£)": "£{:.0f}",
+    "Net Cashflow (£)": "£{:.0f}",
+    "Cumulative Net Cashflow (£)": "£{:.0f}",
+    "Annual kWh Saved": "{:.0f}",
+    "Remaining Intensity (kWh/m²)": "{:.1f}"
+}))
+
+# Cumulative Net Cashflow Chart
+st.subheader("💹 Cumulative Net Cashflow Over Time")
 fig, ax = plt.subplots()
-ax.plot(years_range, remaining_intensity, marker="o", label="Projected Intensity")
-ax.axhline(target_intensity, color="red", linestyle="--", label="Target Intensity")
+ax.plot(
+    cashflow["Year"],
+    cashflow["Cumulative Net Cashflow (£)"],
+    marker="o",
+    color="green"
+)
 ax.set_xlabel("Year")
-ax.set_ylabel("kWh/m²/year")
-ax.set_title("Energy Intensity Trajectory")
-ax.legend()
+ax.set_ylabel("Cumulative Net Cashflow (£)")
+ax.set_title("Cumulative Net Cashflow")
 ax.grid(True)
 st.pyplot(fig)
