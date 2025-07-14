@@ -51,13 +51,23 @@ for retrofit, saving in retrofit_options.items():
 remaining_intensity = np.clip(remaining_intensity, 0, None)
 
 
+# Make a NEW results DataFrame for retrofitted scenario
+retrofit_results = pd.DataFrame({
+    "Year": np.arange(1, years + 1),
+    "Remaining Intensity (kWh/m²)": remaining_intensity
+})
+
 # Chart
-st.subheader("Energy Intensity Over Time")
+st.subheader("Energy Intensity Over Time (After Retrofits)")
 fig, ax = plt.subplots()
-ax.plot(results["Year"], results["Remaining Intensity (kWh/m²)"], label="Remaining Intensity")
+ax.plot(retrofit_results["Year"], retrofit_results["Remaining Intensity (kWh/m²)"], label="Retrofit Scenario")
 ax.axhline(target_intensity, color="red", linestyle="--", label="Target Intensity")
 ax.set_xlabel("Year")
 ax.set_ylabel("Energy Intensity (kWh/m²)")
-ax.set_title("Energy Intensity Reduction Path")
+ax.set_title("Energy Intensity Reduction Path After Retrofits")
 ax.legend()
 st.pyplot(fig)
+
+# Optionally, show the updated table
+st.subheader("Updated Energy Intensity Table")
+st.dataframe(retrofit_results)
