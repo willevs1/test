@@ -37,7 +37,6 @@ years = st.slider(
 
 st.session_state["years"] = years
 
-)
 
 # Calculations
 current_intensity = current_energy_consumption / floor_area_m2
