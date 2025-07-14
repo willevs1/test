@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
+years = int(st.session_state["years"])
+
 retrofit_options = {
     "LED Lighting Upgrade": 20,   # kWh/m² saved
     "HVAC Optimization": 35,
