@@ -64,6 +64,9 @@ devaluation_rate = st.slider(
 
 # Calculations
 current_intensity = current_energy_consumption / floor_area_m2
+
+st.session_state["current_intensity"] = current_intensity
+
 annual_reduction = (current_intensity - target_intensity) / years
 kwh_saved_per_m2 = np.linspace(0, current_intensity - target_intensity, years)
 total_kwh_saved = kwh_saved_per_m2 * floor_area_m2
