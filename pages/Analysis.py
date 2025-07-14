@@ -35,6 +35,8 @@ years = st.slider(
     value=10
 )
 
+st.session_state["years"] = years
+
 retrofit_cost_per_kwh = st.number_input(
     "Retrofit Cost (£/kWh saved)",
     min_value=0.0,
