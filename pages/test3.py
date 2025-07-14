@@ -1,2 +1,10 @@
 import streamlit as st
-st.title("Hello Streamlit!")
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+st.set_page_config(
+    page_title="ESG Analysis",
+    page_icon="📊",
+    layout="wide"
+)
