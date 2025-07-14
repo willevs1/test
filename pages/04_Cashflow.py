@@ -26,9 +26,5 @@ annual_savings_£ = np.zeros(years)
 # Build CAPEX and energy savings
 cumulative_saving_per_m2 = np.zeros(years)
 
-for retrofit, data in retrofits.items():
-    year_index = data["year"] - 1
-    saving_per_m2 = data["saving"]
-    cost = data["cost"]
 
    
