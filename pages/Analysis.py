@@ -71,27 +71,12 @@ annual_reduction = (current_intensity - target_intensity) / years
 kwh_saved_per_m2 = np.linspace(0, current_intensity - target_intensity, years)
 total_kwh_saved = kwh_saved_per_m2 * floor_area_m2
 
-retrofit_costs = total_kwh_saved * retrofit_cost_per_kwh
-remaining_intensity = current_intensity - kwh_saved_per_m2
-fines = np.maximum(remaining_intensity - target_intensity, 0) * floor_area_m2 * carbon_price
-
-asset_values = []
-value = floor_area_m2 * asset_value_per_m2
-for i in range(years):
-    if remaining_intensity[i] > target_intensity:
-        value *= (1 - devaluation_rate / 100)
-    asset_values.append(value)
 
 # Results
 results = pd.DataFrame({
     "Year": np.arange(1, years + 1),
     "kWh Saved per m²": kwh_saved_per_m2,
-    "Retrofit Costs (£)": retrofit_costs,
-    "Fines (£)": fines,
-    "Remaining Intensity (kWh/m²)": remaining_intensity,
-    "Asset Value (£)": asset_values
 })
-
 
 st.subheader("Simulation Results")
 st.dataframe(results)
