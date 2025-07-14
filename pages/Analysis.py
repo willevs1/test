@@ -92,6 +92,10 @@ results = pd.DataFrame({
     "Asset Value (£)": asset_values
 })
 
+st.session_state["results"] = results
+
+
+
 st.subheader("Simulation Results")
 st.dataframe(results)
 
