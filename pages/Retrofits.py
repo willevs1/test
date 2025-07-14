@@ -18,11 +18,11 @@ results = st.session_state["results"]
 
 
 retrofit_options = {
-    "LED Lighting Upgrade": 20,   # kWh/m² saved
-    "HVAC Optimization": 35,
-    "Solar PV Installation": 25,
-    "Insulation Improvement": 40,
-    "Building Management System": 30,
+    "LED Lighting Upgrade": 130,   # kWh/m² saved
+    "HVAC Optimization": 121.6,
+    "Solar PV Installation": 121.6,
+    "Insulation Improvement": 121.6,
+    "Building Management System": 121.6,
 }
 
 selected_retrofits = st.multiselect("Select retrofits to apply:", list(retrofit_options.keys()))
