@@ -37,29 +37,6 @@ years = st.slider(
 
 st.session_state["years"] = years
 
-retrofit_cost_per_kwh = st.number_input(
-    "Retrofit Cost (£/kWh saved)",
-    min_value=0.0,
-    value=1.5
-)
-
-carbon_price = st.number_input(
-    "Carbon Fine (£/kWh over target)",
-    min_value=0.0,
-    value=0.2
-)
-
-asset_value_per_m2 = st.number_input(
-    "Initial Asset Value (£/m²)",
-    min_value=0.0,
-    value=2000.0
-)
-
-devaluation_rate = st.slider(
-    "Annual Devaluation if Non-Compliant (%)",
-    min_value=0.0,
-    max_value=10.0,
-    value=2.0
 )
 
 # Calculations
