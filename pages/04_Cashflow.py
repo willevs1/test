@@ -18,4 +18,25 @@ energy_cost_per_kwh = st.number_input(
     value=0.15
 )
 
+# Initialize arrays
+annual_capex = np.zeros(years)
+annual_savings_kwh = np.zeros(years)
+annual_savings_£ = np.zeros(years)
 
+# Build CAPEX and energy savings
+cumulative_saving_per_m2 = np.zeros(years)
+
+for retrofit, data in retrofits.items():
+    year_index = data["year"] - 1
+    saving_per_m2 = data["saving"]
+    cost = data["cost"]
+
+    # CAPEX occurs in the completion year
+    annual_capex[year_index] += cost
+
+    # From year of completion onwards, the savings accumulate
+    cumulative_saving_per_m2[year_index:] += saving_per_m2
+
+# Compute annual kWh savings and monetary savings
+annual_savings_kwh = cumulative_saving_per_m2 * floor_area_m2
+annual_savings_£ = annual_savings_kwh * energy_cost_per_kwh
