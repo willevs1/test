@@ -11,6 +11,18 @@ years = st.session_state["years"]
 floor_area_m2 = st.session_state["floor_area_m2"]
 remaining_intensity = st.session_state["remaining_intensity_after_retrofits"]
 
+# Energy cost assumption
+energy_cost_per_kwh = st.number_input(
+    "Energy Cost per kWh (£)",
+    min_value=0.0,
+    value=0.15
+)
+
+# Initialize arrays
+annual_capex = np.zeros(years)
+annual_savings_kwh = np.zeros(years)
+annual_savings_pounds = np.zeros(years)
+
 # Build CAPEX and energy savings
 cumulative_saving_per_m2 = np.zeros(years)
 
@@ -27,6 +39,7 @@ for retrofit, data in retrofits.items():
 
 # Compute annual kWh savings and monetary savings
 annual_savings_kwh = cumulative_saving_per_m2 * floor_area_m2
+annual_savings_£ = annual_savings_kwh * energy_cost_per_kwh
 
 # Cash flow DataFrame
 cashflow = pd.DataFrame({
