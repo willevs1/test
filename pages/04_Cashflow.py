@@ -20,7 +20,7 @@ energy_cost_per_kwh = st.number_input(
 
 
 # Initialize arrays
-annual_capex = np.zeros(years)
-annual_savings_kwh = np.zeros(years)
-annual_savings_£ = np.zeros(years)
+annual_capex = np.zeros(int(years))
+annual_savings_kwh = np.zeros(int(years))
+annual_savings_£ = np.zeros(int(years))
    
