@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 years = int(st.session_state["years"])
 current_intensity  = int(st.session_state["current_intensity"])
 
+results  = st.session_state["results"]
+
 retrofit_options = {
     "LED Lighting Upgrade": 20,   # kWh/m² saved
     "HVAC Optimization": 35,
