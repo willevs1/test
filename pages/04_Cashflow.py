@@ -39,14 +39,14 @@ for retrofit, data in retrofits.items():
 
 # Compute annual kWh savings and monetary savings
 annual_savings_kwh = cumulative_saving_per_m2 * floor_area_m2
-annual_savings_£ = annual_savings_kwh * energy_cost_per_kwh
+annual_savings_pounds = annual_savings_kwh * energy_cost_per_kwh
 
 # Cash flow DataFrame
 cashflow = pd.DataFrame({
     "Year": np.arange(1, years + 1),
     "CAPEX (£)": annual_capex,
     "Annual kWh Saved": annual_savings_kwh,
-    "Annual £ Savings": annual_savings_£,
+    "Annual £ Savings": annual_savings_pounds,
     "Remaining Intensity (kWh/m²)": remaining_intensity
 })
 
