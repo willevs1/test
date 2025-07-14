@@ -9,21 +9,17 @@ current_energy_consumption = st.session_state["current_energy_consumption"]
 target_intensity = st.session_state["target_intensity"]
 years = st.session_state["years"]
 current_intensity = st.session_state["current_intensity"]
-annual_reduction = st.session_state["annual_reduction"]
-kwh_saved_per_m2 = st.session_state["kwh_saved_per_m2"]
-total_kwh_saved = st.session_state["total_kwh_saved"]
-remaining_intensity = st.session_state["remaining_intensity"]
-results = st.session_state["results"]
 
-
-
+# Retrofit options (in kWh/m²/year)
 retrofit_options = {
-    "LED Lighting Upgrade": 130,   # kWh/m² saved
+    "LED Lighting Upgrade": 130,
     "HVAC Optimization": 121.6,
     "Solar PV Installation": 121.6,
     "Insulation Improvement": 121.6,
     "Building Management System": 121.6,
 }
+
+st.subheader("Retrofit Scenario")
 
 selected_retrofits = st.multiselect("Select retrofits to apply:", list(retrofit_options.keys()))
 
@@ -33,41 +29,40 @@ for retrofit in selected_retrofits:
         f"Year of completion for {retrofit}:",
         min_value=1,
         max_value=years,
-        value=1
+        value=1,
+        key=f"year_{retrofit}"
     )
     retrofit_years[retrofit] = year
 
-# Initialize arrays
+# Initialize
 remaining_intensity = np.full(years, current_intensity)
 
-# Compute cumulative reductions over time
+# Apply retrofits
 for retrofit, saving in retrofit_options.items():
     if retrofit in selected_retrofits:
         year_done = retrofit_years[retrofit]
-        # From year_done onward, reduce intensity
         remaining_intensity[year_done-1:] -= saving
 
-# Ensure no negative intensities
+# Clip to avoid negatives
 remaining_intensity = np.clip(remaining_intensity, 0, None)
 
-
-# Make a NEW results DataFrame for retrofitted scenario
-retrofit_results = pd.DataFrame({
-    "Year": np.arange(1, years + 1),
-    "Remaining Intensity (kWh/m²)": remaining_intensity
-})
-
-# Chart
-st.subheader("Energy Intensity Over Time (After Retrofits)")
+# Display chart
+st.subheader("Energy Intensity Over Time (with Retrofits)")
 fig, ax = plt.subplots()
-ax.plot(retrofit_results["Year"], retrofit_results["Remaining Intensity (kWh/m²)"], label="Retrofit Scenario")
+year_range = np.arange(1, years + 1)
+
+ax.plot(year_range, remaining_intensity, label="Remaining Intensity After Retrofits", color="green")
 ax.axhline(target_intensity, color="red", linestyle="--", label="Target Intensity")
 ax.set_xlabel("Year")
 ax.set_ylabel("Energy Intensity (kWh/m²)")
-ax.set_title("Energy Intensity Reduction Path After Retrofits")
+ax.set_title("Energy Intensity Reduction Path with Retrofits")
 ax.legend()
+
 st.pyplot(fig)
 
-# Optionally, show the updated table
-st.subheader("Updated Energy Intensity Table")
+# Also show as a table
+retrofit_results = pd.DataFrame({
+    "Year": year_range,
+    "Remaining Intensity (kWh/m²)": remaining_intensity
+})
 st.dataframe(retrofit_results)
