@@ -1,22 +1,22 @@
 import streamlit as st
-import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+import numpy as np
+import altair as alt
 
 st.title("💰 Retrofit Cash Flow Analysis")
 
-# Retrieve stored data from session state
-selected_retrofits = st.session_state.get("selected_retrofit_data", {})
-floor_area_m2 = st.session_state.get("floor_area_m2", 1000)
-years = st.session_state.get("years", 10)
-remaining_intensity = st.session_state.get("remaining_intensity_after_retrofits", np.full(years, np.nan))
-
-# If no retrofits were selected, show warning
-if not selected_retrofits:
-    st.warning("⚠️ No retrofits selected on the Retrofit page.")
+# Check that retrofits were selected
+if "selected_retrofit_data" not in st.session_state:
+    st.warning("No retrofit data found. Please configure retrofits first.")
     st.stop()
 
-# User input: energy price
+# Retrieve stored data
+retrofits = st.session_state["selected_retrofit_data"]
+years = st.session_state["years"]
+floor_area_m2 = st.session_state["floor_area_m2"]
+remaining_intensity = st.session_state["remaining_intensity_after_retrofits"]
+
+# Energy cost assumption
 energy_cost_per_kwh = st.number_input(
     "Energy Cost per kWh (£)",
     min_value=0.0,
@@ -26,77 +26,67 @@ energy_cost_per_kwh = st.number_input(
 
 # Initialize arrays
 annual_capex = np.zeros(years)
-annual_savings_kwh = np.zeros(years)
-annual_savings_pounds = np.zeros(years)
-
-# Cumulative savings applied over time
 cumulative_saving_per_m2 = np.zeros(years)
 
-# Compute cashflows
-for measure, data in selected_retrofits.items():
-    year_idx = data["year"] - 1
+# Build CAPEX and energy savings
+for retrofit, data in retrofits.items():
+    year_index = data["year"] - 1
     saving_per_m2 = data["saving"]
     cost_per_m2 = data["cost_per_m2"]
     total_cost = cost_per_m2 * floor_area_m2
 
-    # CAPEX in year of completion
-    annual_capex[year_idx] += total_cost
+    # CAPEX occurs in the completion year
+    annual_capex[year_index] += total_cost
 
-    # From year of completion onward, accumulate savings
-    cumulative_saving_per_m2[year_idx:] += saving_per_m2
+    # From year of completion onwards, the savings accumulate
+    cumulative_saving_per_m2[year_index:] += saving_per_m2
 
-# Annual savings in kWh and £
+# Compute annual kWh savings and monetary savings
 annual_savings_kwh = cumulative_saving_per_m2 * floor_area_m2
-annual_savings_pounds = annual_savings_kwh * energy_cost_per_kwh
+annual_savings_gbp = annual_savings_kwh * energy_cost_per_kwh
 
-# Build DataFrame
+# Build the DataFrame
 cashflow = pd.DataFrame({
     "Year": np.arange(1, years + 1),
-    "Capex": annual_capex,
-    "Annual kWh Saved": annual_savings_kwh,
-    "Annual Energy Savings (£)": annual_savings_pounds,
-    "Remaining Intensity (kWh/m²)": remaining_intensity
+    "CAPEX_GBP": annual_capex,
+    "AnnualKwhSaved": annual_savings_kwh,
+    "AnnualSavings_GBP": annual_savings_gbp,
+    "RemainingIntensity": remaining_intensity
 })
 
-# Cumulative columns
-cashflow["Cumulative Energy Savings (£)"] = cashflow["Annual Energy Savings (£)"].cumsum()
-cashflow["Net Cashflow (£)"] = cashflow["Annual Energy Savings (£)"] - cashflow["Capex"]
-cashflow["Cumulative Net Cashflow (£)"] = cashflow["Net Cashflow (£)"].cumsum()
+# Cumulative cashflow
+cashflow["CumulativeSavings_GBP"] = cashflow["AnnualSavings_GBP"].cumsum()
+cashflow["NetCashflow_GBP"] = cashflow["AnnualSavings_GBP"] - cashflow["CAPEX_GBP"]
+cashflow["CumulativeNetCashflow_GBP"] = cashflow["NetCashflow_GBP"].cumsum()
 
-# Display Table
+# Display table
 st.subheader("📊 Cash Flow Table")
 st.dataframe(cashflow.style.format({
-    "Capex": "£{:.0f}",
-    "Annual Energy Savings (£)": "£{:.0f}",
-    "Cumulative Energy Savings (£)": "£{:.0f}",
-    "Net Cashflow (£)": "£{:.0f}",
-    "Cumulative Net Cashflow (£)": "£{:.0f}",
-    "Annual kWh Saved": "{:.0f}",
-    "Remaining Intensity (kWh/m²)": "{:.1f}"
+    "CAPEX_GBP": "£{:.0f}",
+    "AnnualKwhSaved": "{:.0f} kWh",
+    "AnnualSavings_GBP": "£{:.0f}",
+    "CumulativeSavings_GBP": "£{:.0f}",
+    "NetCashflow_GBP": "£{:.0f}",
+    "CumulativeNetCashflow_GBP": "£{:.0f}"
 }))
 
-# Cumulative Net Cashflow Chart
-import altair as alt
-
-cashflow_clean = cashflow.rename(columns={
-    "Cumulative Net Cashflow": "CumulativeNetCashflow",
-    "Net Cashflow": "NetCashflow",
-    "CAPEX (£/m2)": "CAPEX_per_m2",
-    "Annual kWh Saved": "AnnualKwhSaved",
-    "Annual £ Savings": "AnnualSavings",
-    "Remaining Intensity (kWh/m²)": "RemainingIntensity"
-})
-
+# Plot cumulative net cashflow
+st.subheader("📈 Cumulative Net Cashflow Over Time")
 chart = alt.Chart(cashflow).mark_line(point=True).encode(
     x=alt.X("Year:O", title="Year"),
-    y=alt.Y("Cumulative Net Cashflow", title="£"),
-    tooltip=["Year", "Cumulative Net Cashflow", "Net Cashflow"]
+    y=alt.Y("CumulativeNetCashflow_GBP", title="Cumulative Net Cashflow (£)"),
+    tooltip=[
+        alt.Tooltip("Year:O"),
+        alt.Tooltip("CumulativeNetCashflow_GBP", format=",.0f", title="Cumulative Net £")
+    ]
 ).properties(
     width="container",
     height=400,
-    title="Cumulative Net Cashflow Over Time"
+    title="Cumulative Net Cashflow"
 ).configure_axis(
     grid=True
+).configure_view(
+    stroke=None
 )
 
 st.altair_chart(chart, use_container_width=True)
