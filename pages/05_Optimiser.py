@@ -3,104 +3,137 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-st.title("🛠 Retrofit Optimiser")
+st.title("🛠 Retrofit Optimiser (Minimal Annual Spend Strategy)")
 
-# Check data is available
-required_keys = ["floor_area_m2", "current_intensity", "target_intensity"]
+# Check that prior data is available
+required_keys = ["floor_area_m2", "current_intensity", "target_intensity", "years"]
 if not all(k in st.session_state for k in required_keys):
     st.warning("Missing required session data. Please complete previous steps first.")
     st.stop()
 
-# Input values
+# Retrieve inputs
 floor_area_m2 = st.session_state["floor_area_m2"]
 current_intensity = st.session_state["current_intensity"]
 target_intensity = st.session_state["target_intensity"]
 years = st.session_state["years"]
 
-# Available retrofits
+# Define your retrofit options exactly as given
 retrofit_options = {
-    "LED Lighting Upgrade": {"saving": 30, "cost_per_m2": 25},
-    "HVAC Optimization": {"saving": 40, "cost_per_m2": 35},
-    "Solar PV Installation": {"saving": 45, "cost_per_m2": 50},
-    "Insulation Improvement": {"saving": 35, "cost_per_m2": 30},
-    "Building Management System": {"saving": 25, "cost_per_m2": 20},
+    "Optimization": {
+        "Reduce Tenant Loads": {"saving": 23.1, "cost_per_m2": 3},
+        "BMS Upgrade": {"saving": 4.0, "cost_per_m2": 5},
+    },
+    "Light Retrofit": {
+        "Low Energy Lighting": {"saving": 8.5, "cost_per_m2": 15},
+        "Lighting Controls": {"saving": 5.7, "cost_per_m2": 5},
+    },
+    "Deep Retrofit": {
+        "Wall Insulation": {"saving": 4.1, "cost_per_m2": 60},
+        "Roof Insulation": {"saving": 1.5, "cost_per_m2": 20},
+        "Window Replacement": {"saving": 7.4, "cost_per_m2": 60},
+        "Air Source Heat Pump": {"saving": 17.6, "cost_per_m2": 50},
+    },
+    "Renewables": {
+        "Solar PV": {"saving": 5.3, "cost_per_m2": 3},
+    },
 }
 
-# Display options
-st.subheader("Available Retrofit Options")
-retrofit_df = pd.DataFrame([
-    {"Retrofit": name, **vals,
-     "efficiency": vals["cost_per_m2"] / vals["saving"]}
-    for name, vals in retrofit_options.items()
-]).sort_values("efficiency")
+# Flatten retrofit options to a DataFrame
+retrofit_list = []
+for category, measures in retrofit_options.items():
+    for name, props in measures.items():
+        retrofit_list.append({
+            "Category": category,
+            "Measure": name,
+            "Saving": props["saving"],
+            "Cost_per_m2": props["cost_per_m2"],
+            "Efficiency": props["cost_per_m2"] / props["saving"] if props["saving"] else np.inf,
+        })
 
-st.dataframe(retrofit_df)
+df_retrofits = pd.DataFrame(retrofit_list)
+df_retrofits = df_retrofits.sort_values("Efficiency")
 
-# Compute required savings
-total_required_saving = current_intensity - target_intensity
-st.info(f"🔍 Total required reduction: **{total_required_saving:.1f} kWh/m²**")
+# Determine required reduction
+required_reduction = current_intensity - target_intensity
+st.info(f"Required reduction: **{required_reduction:.2f} kWh/m²** over {years} years.")
 
-# Greedy optimisation: cheapest per unit saving first
-selected_upgrades = []
-cumulative_saving = 0
-
-for name, row in retrofit_df.iterrows():
-    if cumulative_saving >= total_required_saving:
+# Select measures cumulatively until target is reached
+selected = []
+cumulative_saving = 0.0
+for _, row in df_retrofits.iterrows():
+    if cumulative_saving >= required_reduction:
         break
-    selected_upgrades.append({
-        "name": row["Retrofit"],
-        "saving": row["saving"],
-        "cost_per_m2": row["cost_per_m2"],
-        "efficiency": row["efficiency"]
-    })
-    cumulative_saving += row["saving"]
+    selected.append(row)
+    cumulative_saving += row["Saving"]
 
-# Schedule upgrades across years
-savings_schedule = np.full(years, current_intensity)
-year_plan = {}
+if not selected:
+    st.error("No retrofits selected. Target may already be met.")
+    st.stop()
+
+# Schedule retrofits: spread them as evenly as possible over years
+schedule = {}
+step = max(1, years // len(selected))
 current_year = 1
+for i, row in enumerate(selected):
+    schedule[row["Measure"]] = current_year
+    current_year += step
+    if current_year > years:
+        current_year = years  # Keep any extra in the final year
 
-for upgrade in selected_upgrades:
-    savings_schedule[current_year - 1:] -= upgrade["saving"]
-    year_plan[upgrade["name"]] = current_year
-    current_year += 1
+# Build emissions trajectory
+remaining_intensity = np.full(years, current_intensity)
+for measure, year in schedule.items():
+    saving = df_retrofits.loc[df_retrofits["Measure"] == measure, "Saving"].values[0]
+    remaining_intensity[year-1:] -= saving
 
-# Ensure no negatives
-savings_schedule = np.clip(savings_schedule, 0, None)
+remaining_intensity = np.clip(remaining_intensity, 0, None)
 
-# Store for use in other pages
-retrofit_output = {
-    item["name"]: {
-        "year": year_plan[item["name"]],
-        "saving": item["saving"],
-        "cost_per_m2": item["cost_per_m2"]
+# Store selected retrofits in session_state
+st.session_state["selected_retrofit_data"] = {
+    measure: {
+        "year": year,
+        "saving": df_retrofits.loc[df_retrofits["Measure"] == measure, "Saving"].values[0],
+        "cost_per_m2": df_retrofits.loc[df_retrofits["Measure"] == measure, "Cost_per_m2"].values[0],
     }
-    for item in selected_upgrades
+    for measure, year in schedule.items()
 }
-st.session_state["selected_retrofit_data"] = retrofit_output
-st.session_state["remaining_intensity_after_retrofits"] = savings_schedule
+st.session_state["remaining_intensity_after_retrofits"] = remaining_intensity
 
-# Show result
-st.subheader("📋 Optimised Retrofit Plan")
+# Display selected measures and schedule
+st.subheader("Selected Retrofit Measures")
 plan_df = pd.DataFrame([
     {
-        "Retrofit": name,
+        "Measure": measure,
+        "Year of Install": data["year"],
         "Saving (kWh/m²)": data["saving"],
         "Cost (£/m²)": data["cost_per_m2"],
-        "Year": data["year"]
+        "Category": df_retrofits.loc[df_retrofits["Measure"] == measure, "Category"].values[0]
     }
-    for name, data in retrofit_output.items()
+    for measure, data in st.session_state["selected_retrofit_data"].items()
 ])
 st.dataframe(plan_df)
 
-# Chart
-st.subheader("📉 Emissions Trajectory with Optimised Retrofits")
-fig, ax = plt.subplots()
-ax.plot(np.arange(1, years + 1), savings_schedule, marker="o", label="Remaining Intensity")
-ax.axhline(target_intensity, color="red", linestyle="--", label="Target Intensity")
+# Show emissions trajectory
+st.subheader("Projected Energy Intensity Over Time")
+fig, ax = plt.subplots(figsize=(6, 4))
+ax.plot(np.arange(1, years + 1), remaining_intensity, marker="o", label="Remaining Intensity")
+ax.axhline(target_intensity, color="red", linestyle="--", label="Target")
 ax.set_xlabel("Year")
-ax.set_ylabel("Energy Intensity (kWh/m²)")
-ax.set_title("Projected Intensity Reduction Path")
+ax.set_ylabel("kWh/m²")
+ax.set_title("Trajectory of Energy Intensity")
 ax.grid(True)
 ax.legend()
 st.pyplot(fig)
+
+# Show estimated annual CAPEX
+annual_capex = np.zeros(years)
+for measure, data in st.session_state["selected_retrofit_data"].items():
+    year_idx = data["year"] - 1
+    annual_capex[year_idx] += data["cost_per_m2"] * floor_area_m2
+
+capex_df = pd.DataFrame({
+    "Year": np.arange(1, years + 1),
+    "Estimated CAPEX (£)": annual_capex
+})
+st.subheader("Estimated Annual Spend")
+st.bar_chart(capex_df.set_index("Year"))
