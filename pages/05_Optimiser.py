@@ -1,82 +1,106 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
 
-def optimize_retrofits(current_intensity, target_intensity, retrofit_options, floor_area_m2):
-    """
-    Greedy optimizer: selects the most cost-effective retrofits to meet target intensity.
-    """
-    # Sort by cost-effectiveness (£ per kWh saved)
-    sorted_retrofits = sorted(
-        retrofit_options.items(),
-        key=lambda x: x[1]["cost_per_m2"] / x[1]["saving"]
-    )
+st.title("🛠 Retrofit Optimiser")
 
-    selected = []
-    cumulative_saving = 0.0
-    total_cost = 0.0
+# Check data is available
+required_keys = ["floor_area_m2", "current_intensity", "target_intensity"]
+if not all(k in st.session_state for k in required_keys):
+    st.warning("Missing required session data. Please complete previous steps first.")
+    st.stop()
 
-    for name, data in sorted_retrofits:
-        if current_intensity - cumulative_saving <= target_intensity:
-            break
+# Input values
+floor_area_m2 = st.session_state["floor_area_m2"]
+current_intensity = st.session_state["current_intensity"]
+target_intensity = st.session_state["target_intensity"]
+years = st.session_state["years"]
 
-        cumulative_saving += data["saving"]
-        retrofit_cost = data["cost_per_m2"] * floor_area_m2
-        total_cost += retrofit_cost
-
-        selected.append({
-            "Retrofit": name,
-            "Saving (kWh/m²)": data["saving"],
-            "Cost per m² (£)": data["cost_per_m2"],
-            "Total Cost (£)": retrofit_cost
-        })
-
-    final_intensity = max(current_intensity - cumulative_saving, 0)
-
-    return pd.DataFrame(selected), final_intensity, total_cost
-
-
-st.title("🔧 Retrofit Optimizer (Auto-Select Best Combo)")
-
-floor_area_m2 = st.number_input("Floor area (m²)", value=5000)
-current_intensity = st.number_input("Current intensity (kWh/m²/year)", value=250.0)
-target_intensity = st.number_input("Target intensity (kWh/m²/year)", value=75.0)
-
+# Available retrofits
 retrofit_options = {
-    "Optimization": {
-        "Reduce Tenant Loads": {"saving": 23.1, "cost_per_m2": 3},
-        "BMS Upgrade": {"saving": 4.0, "cost_per_m2": 5},
-    },
-    "Light Retrofit": {
-        "Low Energy Lighting": {"saving": 8.5, "cost_per_m2": 15},
-        "Lighting Controls": {"saving": 5.7, "cost_per_m2": 5},
-    },
-    "Deep Retrofit": {
-        "Wall Insulation": {"saving": 4.1, "cost_per_m2": 60},
-        "Roof Insulation": {"saving": 1.5, "cost_per_m2": 20},
-        "Window Replacement": {"saving": 7.4, "cost_per_m2": 60},
-        "Air Source Heat Pump": {"saving": 17.6, "cost_per_m2": 50},
-    },
-    "Renewables": {
-        "Solar PV": {"saving": 5.3, "cost_per_m2": 3},
-    },
+    "LED Lighting Upgrade": {"saving": 30, "cost_per_m2": 25},
+    "HVAC Optimization": {"saving": 40, "cost_per_m2": 35},
+    "Solar PV Installation": {"saving": 45, "cost_per_m2": 50},
+    "Insulation Improvement": {"saving": 35, "cost_per_m2": 30},
+    "Building Management System": {"saving": 25, "cost_per_m2": 20},
 }
 
-if st.button("Optimize Retrofit Plan"):
-    results_df, achieved_intensity, total_cost = optimize_retrofits(
-        current_intensity,
-        target_intensity,
-        retrofit_options,
-        floor_area_m2
-    )
+# Display options
+st.subheader("Available Retrofit Options")
+retrofit_df = pd.DataFrame([
+    {"Retrofit": name, **vals,
+     "efficiency": vals["cost_per_m2"] / vals["saving"]}
+    for name, vals in retrofit_options.items()
+]).sort_values("efficiency")
 
-    if results_df.empty:
-        st.warning("❗️ No retrofits needed or possible to reach target.")
-    else:
-        st.subheader("✅ Selected Retrofits")
-        st.dataframe(results_df)
+st.dataframe(retrofit_df)
 
-        st.markdown(f"""
-        ### 📊 Summary:
-        - **Final Intensity:** {achieved_intensity:.2f} kWh/m²/year
-        - **Total Estimated Cost:** £{total_cost:,.2f}
-        """)
+# Compute required savings
+total_required_saving = current_intensity - target_intensity
+st.info(f"🔍 Total required reduction: **{total_required_saving:.1f} kWh/m²**")
+
+# Greedy optimisation: cheapest per unit saving first
+selected_upgrades = []
+cumulative_saving = 0
+
+for name, row in retrofit_df.iterrows():
+    if cumulative_saving >= total_required_saving:
+        break
+    selected_upgrades.append({
+        "name": row["Retrofit"],
+        "saving": row["saving"],
+        "cost_per_m2": row["cost_per_m2"],
+        "efficiency": row["efficiency"]
+    })
+    cumulative_saving += row["saving"]
+
+# Schedule upgrades across years
+savings_schedule = np.full(years, current_intensity)
+year_plan = {}
+current_year = 1
+
+for upgrade in selected_upgrades:
+    savings_schedule[current_year - 1:] -= upgrade["saving"]
+    year_plan[upgrade["name"]] = current_year
+    current_year += 1
+
+# Ensure no negatives
+savings_schedule = np.clip(savings_schedule, 0, None)
+
+# Store for use in other pages
+retrofit_output = {
+    item["name"]: {
+        "year": year_plan[item["name"]],
+        "saving": item["saving"],
+        "cost_per_m2": item["cost_per_m2"]
+    }
+    for item in selected_upgrades
+}
+st.session_state["selected_retrofit_data"] = retrofit_output
+st.session_state["remaining_intensity_after_retrofits"] = savings_schedule
+
+# Show result
+st.subheader("📋 Optimised Retrofit Plan")
+plan_df = pd.DataFrame([
+    {
+        "Retrofit": name,
+        "Saving (kWh/m²)": data["saving"],
+        "Cost (£/m²)": data["cost_per_m2"],
+        "Year": data["year"]
+    }
+    for name, data in retrofit_output.items()
+])
+st.dataframe(plan_df)
+
+# Chart
+st.subheader("📉 Emissions Trajectory with Optimised Retrofits")
+fig, ax = plt.subplots()
+ax.plot(np.arange(1, years + 1), savings_schedule, marker="o", label="Remaining Intensity")
+ax.axhline(target_intensity, color="red", linestyle="--", label="Target Intensity")
+ax.set_xlabel("Year")
+ax.set_ylabel("Energy Intensity (kWh/m²)")
+ax.set_title("Projected Intensity Reduction Path")
+ax.grid(True)
+ax.legend()
+st.pyplot(fig)
