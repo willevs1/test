@@ -76,16 +76,18 @@ st.dataframe(cashflow.style.format({
 }))
 
 # Cumulative Net Cashflow Chart
-st.subheader("💹 Cumulative Net Cashflow Over Time")
-fig, ax = plt.subplots()
-ax.plot(
-    cashflow["Year"],
-    cashflow["Cumulative Net Cashflow (£)"],
-    marker="o",
-    color="green"
+import altair as alt
+
+chart = alt.Chart(cashflow).mark_line(point=True).encode(
+    x=alt.X("Year:O", title="Year"),
+    y=alt.Y("Cumulative Net Cashflow", title="£"),
+    tooltip=["Year", "Cumulative Net Cashflow", "Net Cashflow"]
+).properties(
+    width="container",
+    height=400,
+    title="Cumulative Net Cashflow Over Time"
+).configure_axis(
+    grid=True
 )
-ax.set_xlabel("Year")
-ax.set_ylabel("Cumulative Net Cashflow (£)")
-ax.set_title("Cumulative Net Cashflow")
-ax.grid(True)
-st.pyplot(fig)
+
+st.altair_chart(chart, use_container_width=True)
