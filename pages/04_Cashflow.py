@@ -66,3 +66,24 @@ st.dataframe(
         "NetCashflowGBP": "£{:.0f}",
         "CumulativeNetCashflowGBP": "£{:.0f}"
     }))
+
+# Plot Cumulative Net Cashflow
+st.subheader("📈 Cumulative Net Cashflow Over Time")
+chart = alt.Chart(cashflow).mark_line(point=True).encode(
+    x=alt.X("Year:O", title="Year"),
+    y=alt.Y("CumulativeNetCashflowGBP:Q", title="Cumulative Net Cashflow (£)"),
+    tooltip=[
+        alt.Tooltip("Year:O"),
+        alt.Tooltip("CumulativeNetCashflowGBP:Q", format=",.0f", title="Cumulative Net £")
+    ]
+).properties(
+    width="container",
+    height=400,
+    title="Cumulative Net Cashflow"
+).configure_axis(
+    grid=True
+).configure_view(
+    stroke=None
+)
+
+st.altair_chart(chart, use_container_width=True)
