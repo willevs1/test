@@ -1,17 +1,13 @@
 import streamlit as st
-import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 
-st.title("🏗️ Retrofit Planning")
+st.title("🏗 Retrofit Options Selection")
 
-# Load previously stored session variables
-floor_area_m2 = st.session_state["floor_area_m2"]
-current_intensity = st.session_state["current_intensity"]
-target_intensity = st.session_state["target_intensity"]
-years = st.session_state["years"]
+# Input building parameters if needed
+floor_area_m2 = st.session_state.get("floor_area_m2", 1000)
+years = st.session_state.get("years", 5)
 
-# Define retrofit measures and phases
+# Retrofit options
 retrofit_options = {
     "Optimization": {
         "Reduce Tenant Loads": {"saving": 23.1, "cost_per_m2": 3},
@@ -32,57 +28,69 @@ retrofit_options = {
     },
 }
 
-# Phase selection
-st.subheader("Select Retrofit Measures and Timing")
+# Flatten options to DataFrame
+data = []
+for cat, measures in retrofit_options.items():
+    for name, props in measures.items():
+        data.append({
+            "Category": cat,
+            "Measure": name,
+            "Saving (kWh/m²)": props["saving"],
+            "Cost (£/m²)": props["cost_per_m2"],
+        })
+
+df = pd.DataFrame(data)
+
+st.subheader("Available Retrofit Options")
+st.dataframe(df)
+
+# Selection form
+st.subheader("Select Measures and Investment Years")
 
 selected_retrofits = {}
 
-# Let the user pick measures and years
-for phase, measures in retrofit_options.items():
-    st.markdown(f"**{phase} Measures**")
-    for measure, data in measures.items():
-        col1, col2 = st.columns([3, 2])
-        with col1:
-            selected = st.checkbox(f"{measure} (Save {data['saving']} kWh/m²/yr, Cost £{data['cost_per_m2']}/m²)", key=measure)
+with st.form("retrofit_form"):
+    for idx, row in df.iterrows():
+        cols = st.columns([0.4, 0.2, 0.2, 0.2])
+        with cols[0]:
+            selected = st.checkbox(f"{row['Measure']} ({row['Category']})", key=f"check_{idx}")
         if selected:
-            with col2:
+            with cols[1]:
                 year = st.number_input(
-                    f"Year of completion",
+                    "Year",
                     min_value=1,
                     max_value=years,
                     value=1,
-                    key=f"{measure}_year"
+                    key=f"year_{idx}"
                 )
-            selected_retrofits[measure] = {
-                "saving": data["saving"],
-                "cost_per_m2": data["cost_per_m2"],
-                "year": year,
+            # Store selection
+            selected_retrofits[row["Measure"]] = {
+                "year": int(year),
+                "saving": row["Saving (kWh/m²)"],
+                "cost_per_m2": row["Cost (£/m²)"],
+                "category": row["Category"],
             }
+    submitted = st.form_submit_button("Save Selections")
 
-# Calculate annual intensity
-remaining_intensity = np.full(years, current_intensity)
+# Store selections if submitted
+if submitted:
+    if selected_retrofits:
+        st.session_state["selected_retrofit_data"] = selected_retrofits
+        st.success("Selections saved!")
+    else:
+        st.warning("No measures selected.")
 
-# Apply reductions per selected measure
-for measure, data in selected_retrofits.items():
-    year_idx = data["year"] - 1
-    remaining_intensity[year_idx:] -= data["saving"]
-
-remaining_intensity = np.clip(remaining_intensity, 0, None)
-
-# Store for cashflow page
-st.session_state["selected_retrofit_data"] = selected_retrofits
-st.session_state["remaining_intensity_after_retrofits"] = remaining_intensity
-
-# Show graph
-st.subheader("📊 Projected Energy Intensity Over Time")
-years_range = np.arange(1, years + 1)
-
-fig, ax = plt.subplots()
-ax.plot(years_range, remaining_intensity, marker="o", label="Projected Intensity")
-ax.axhline(target_intensity, color="red", linestyle="--", label="Target Intensity")
-ax.set_xlabel("Year")
-ax.set_ylabel("kWh/m²/year")
-ax.set_title("Energy Intensity Trajectory")
-ax.legend()
-ax.grid(True)
-st.pyplot(fig)
+# Preview
+if "selected_retrofit_data" in st.session_state:
+    preview = pd.DataFrame([
+        {
+            "Measure": m,
+            "Category": d["category"],
+            "Year": d["year"],
+            "Saving (kWh/m²)": d["saving"],
+            "Cost (£/m²)": d["cost_per_m2"],
+        }
+        for m, d in st.session_state["selected_retrofit_data"].items()
+    ])
+    st.subheader("Selected Retrofits")
+    st.table(preview)
