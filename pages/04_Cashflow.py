@@ -78,6 +78,15 @@ st.dataframe(cashflow.style.format({
 # Cumulative Net Cashflow Chart
 import altair as alt
 
+cashflow_clean = cashflow.rename(columns={
+    "Cumulative Net Cashflow": "CumulativeNetCashflow",
+    "Net Cashflow": "NetCashflow",
+    "CAPEX (£/m2)": "CAPEX_per_m2",
+    "Annual kWh Saved": "AnnualKwhSaved",
+    "Annual £ Savings": "AnnualSavings",
+    "Remaining Intensity (kWh/m²)": "RemainingIntensity"
+})
+
 chart = alt.Chart(cashflow).mark_line(point=True).encode(
     x=alt.X("Year:O", title="Year"),
     y=alt.Y("Cumulative Net Cashflow", title="£"),
