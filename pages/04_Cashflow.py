@@ -65,4 +65,4 @@ st.dataframe(
         "CumulativeSavingsGBP": "£{:.0f}",
         "NetCashflowGBP": "£{:.0f}",
         "CumulativeNetCashflowGBP": "£{:.0f}"
-    })
+    }))
